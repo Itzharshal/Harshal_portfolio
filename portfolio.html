@@ -1,0 +1,947 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>ALEX VOID — Game Developer</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Rajdhani:wght@300;500;700&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    --bg: #050508;
+    --surface: #0d0d14;
+    --accent: #00f5a0;
+    --accent2: #ff2d6b;
+    --accent3: #7b5cf5;
+    --text: #e8e8f0;
+    --muted: #5a5a72;
+    --border: rgba(255,255,255,0.06);
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 16px;
+    line-height: 1.6;
+    overflow-x: hidden;
+    cursor: none;
+  }
+
+  /* Custom cursor */
+  #cursor {
+    position: fixed;
+    width: 10px;
+    height: 10px;
+    background: var(--accent);
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: 9999;
+    transform: translate(-50%, -50%);
+    transition: width 0.2s, height 0.2s, background 0.2s;
+    mix-blend-mode: difference;
+  }
+  #cursor-ring {
+    position: fixed;
+    width: 36px;
+    height: 36px;
+    border: 1.5px solid var(--accent);
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: 9998;
+    transform: translate(-50%, -50%);
+    transition: all 0.12s ease;
+    opacity: 0.5;
+  }
+  body:hover #cursor { opacity: 1; }
+
+  /* Scanline overlay */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: repeating-linear-gradient(
+      to bottom,
+      transparent 0px,
+      transparent 3px,
+      rgba(0,0,0,0.12) 3px,
+      rgba(0,0,0,0.12) 4px
+    );
+    pointer-events: none;
+    z-index: 1000;
+    opacity: 0.4;
+  }
+
+  /* Noise texture */
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.05'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 999;
+    opacity: 0.3;
+  }
+
+  /* ─── NAV ─── */
+  nav {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    z-index: 500;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1.4rem 3rem;
+    border-bottom: 1px solid var(--border);
+    background: rgba(5,5,8,0.85);
+    backdrop-filter: blur(12px);
+  }
+  .nav-logo {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1.5rem;
+    letter-spacing: 0.12em;
+    color: var(--accent);
+    text-decoration: none;
+  }
+  .nav-links { display: flex; gap: 2.4rem; list-style: none; }
+  .nav-links a {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.7rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--muted);
+    text-decoration: none;
+    transition: color 0.2s;
+    position: relative;
+  }
+  .nav-links a::after {
+    content: '';
+    position: absolute;
+    bottom: -4px; left: 0; right: 0;
+    height: 1px;
+    background: var(--accent);
+    transform: scaleX(0);
+    transition: transform 0.25s;
+  }
+  .nav-links a:hover { color: var(--text); }
+  .nav-links a:hover::after { transform: scaleX(1); }
+
+  /* ─── HERO ─── */
+  .hero {
+    min-height: 100vh;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    align-items: center;
+    padding: 8rem 3rem 4rem;
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* Grid lines background */
+  .hero::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(0,245,160,0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,245,160,0.04) 1px, transparent 1px);
+    background-size: 60px 60px;
+    mask-image: radial-gradient(ellipse 80% 80% at 50% 50%, black, transparent);
+  }
+
+  .hero-content { position: relative; z-index: 2; }
+  .hero-eyebrow {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.68rem;
+    letter-spacing: 0.35em;
+    color: var(--accent);
+    text-transform: uppercase;
+    margin-bottom: 1.2rem;
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    opacity: 0;
+    animation: fadeUp 0.7s 0.2s forwards;
+  }
+  .hero-eyebrow::before {
+    content: '';
+    width: 40px; height: 1px;
+    background: var(--accent);
+    display: block;
+  }
+
+  h1 {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: clamp(4.5rem, 10vw, 9rem);
+    line-height: 0.9;
+    letter-spacing: 0.02em;
+    margin-bottom: 1.6rem;
+    opacity: 0;
+    animation: fadeUp 0.8s 0.35s forwards;
+  }
+  h1 .outline {
+    -webkit-text-stroke: 1.5px var(--text);
+    color: transparent;
+  }
+  h1 .accent { color: var(--accent2); }
+
+  .hero-desc {
+    font-size: 1.15rem;
+    font-weight: 300;
+    color: var(--muted);
+    max-width: 440px;
+    margin-bottom: 2.8rem;
+    line-height: 1.75;
+    opacity: 0;
+    animation: fadeUp 0.8s 0.5s forwards;
+  }
+
+  .hero-ctas {
+    display: flex;
+    gap: 1.2rem;
+    opacity: 0;
+    animation: fadeUp 0.8s 0.65s forwards;
+  }
+  .btn {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.7rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    text-decoration: none;
+    padding: 0.9rem 2rem;
+    border: 1px solid;
+    display: inline-block;
+    transition: all 0.25s;
+    position: relative;
+    overflow: hidden;
+  }
+  .btn-primary {
+    background: var(--accent);
+    color: #000;
+    border-color: var(--accent);
+  }
+  .btn-primary:hover {
+    background: transparent;
+    color: var(--accent);
+  }
+  .btn-ghost {
+    background: transparent;
+    color: var(--text);
+    border-color: var(--border);
+  }
+  .btn-ghost:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  /* Hero visual side */
+  .hero-visual {
+    position: relative;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 500px;
+    opacity: 0;
+    animation: fadeIn 1.2s 0.8s forwards;
+  }
+
+  .glyph-ring {
+    position: absolute;
+    border-radius: 50%;
+    border: 1px solid;
+  }
+  .ring1 {
+    width: 360px; height: 360px;
+    border-color: rgba(0,245,160,0.15);
+    animation: spin 30s linear infinite;
+  }
+  .ring2 {
+    width: 260px; height: 260px;
+    border-color: rgba(255,45,107,0.2);
+    animation: spin 18s linear infinite reverse;
+    border-style: dashed;
+  }
+  .ring3 {
+    width: 160px; height: 160px;
+    border-color: rgba(123,92,245,0.3);
+    animation: spin 10s linear infinite;
+  }
+
+  .center-glyph {
+    width: 80px; height: 80px;
+    background: linear-gradient(135deg, var(--accent), var(--accent3));
+    clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
+    animation: pulse 3s ease-in-out infinite;
+    position: relative;
+    z-index: 2;
+    box-shadow: 0 0 60px rgba(0,245,160,0.4);
+  }
+
+  /* Floating stats */
+  .stat-chip {
+    position: absolute;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 0.7rem 1.2rem;
+    font-family: 'Space Mono', monospace;
+    font-size: 0.65rem;
+    letter-spacing: 0.1em;
+    color: var(--accent);
+    backdrop-filter: blur(8px);
+  }
+  .stat-chip strong {
+    display: block;
+    font-size: 1.4rem;
+    font-family: 'Bebas Neue', sans-serif;
+    color: var(--text);
+    letter-spacing: 0.05em;
+  }
+  .chip-1 { top: 60px; right: 20px; animation: float 6s ease-in-out infinite; }
+  .chip-2 { bottom: 80px; left: 10px; animation: float 6s ease-in-out 2s infinite; }
+  .chip-3 { top: 200px; left: -20px; animation: float 6s ease-in-out 4s infinite; }
+
+  /* ─── SKILLS ─── */
+  .section {
+    padding: 6rem 3rem;
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+  .section-label {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.65rem;
+    letter-spacing: 0.4em;
+    color: var(--accent);
+    text-transform: uppercase;
+    margin-bottom: 0.6rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
+  .section-label::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+  h2 {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: clamp(2.5rem, 5vw, 4rem);
+    line-height: 1;
+    margin-bottom: 3rem;
+    letter-spacing: 0.03em;
+  }
+
+  .skills-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1px;
+    background: var(--border);
+    border: 1px solid var(--border);
+  }
+  .skill-item {
+    background: var(--bg);
+    padding: 2rem 1.8rem;
+    position: relative;
+    overflow: hidden;
+    transition: background 0.3s;
+  }
+  .skill-item::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0;
+    width: 3px;
+    height: 0;
+    background: var(--accent);
+    transition: height 0.4s ease;
+  }
+  .skill-item:hover { background: var(--surface); }
+  .skill-item:hover::before { height: 100%; }
+
+  .skill-icon {
+    font-size: 1.8rem;
+    margin-bottom: 0.8rem;
+    display: block;
+  }
+  .skill-name {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1.3rem;
+    letter-spacing: 0.06em;
+    margin-bottom: 0.4rem;
+  }
+  .skill-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin-top: 0.8rem;
+  }
+  .tag {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.58rem;
+    letter-spacing: 0.1em;
+    padding: 0.2rem 0.5rem;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    text-transform: uppercase;
+  }
+
+  /* ─── PROJECTS ─── */
+  .projects-section { background: var(--surface); padding: 6rem 0; }
+  .projects-inner {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 3rem;
+  }
+
+  .projects-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.5rem;
+    margin-top: 3rem;
+  }
+
+  .project-card {
+    position: relative;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    transition: transform 0.3s, border-color 0.3s;
+  }
+  .project-card:hover {
+    transform: translateY(-6px);
+    border-color: var(--accent);
+  }
+  .project-card.featured {
+    grid-column: span 2;
+  }
+
+  .project-thumb {
+    height: 220px;
+    position: relative;
+    overflow: hidden;
+  }
+  .project-card.featured .project-thumb { height: 300px; }
+
+  .project-bg {
+    width: 100%; height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 6rem;
+    letter-spacing: 0.1em;
+    opacity: 0.2;
+    transition: opacity 0.4s, transform 0.4s;
+  }
+  .project-card:hover .project-bg { opacity: 0.35; transform: scale(1.06); }
+
+  .bg1 { background: linear-gradient(135deg, #0a0a14, #1a0a2e); color: var(--accent3); }
+  .bg2 { background: linear-gradient(135deg, #0a1410, #0a2e1a); color: var(--accent); }
+  .bg3 { background: linear-gradient(135deg, #14080a, #2e0a14); color: var(--accent2); }
+
+  .project-info { padding: 1.6rem; }
+  .project-genre {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.6rem;
+    letter-spacing: 0.25em;
+    color: var(--accent);
+    text-transform: uppercase;
+    margin-bottom: 0.5rem;
+  }
+  .project-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1.8rem;
+    letter-spacing: 0.05em;
+    margin-bottom: 0.6rem;
+    line-height: 1.1;
+  }
+  .project-desc {
+    font-size: 0.9rem;
+    font-weight: 300;
+    color: var(--muted);
+    line-height: 1.6;
+    margin-bottom: 1.2rem;
+  }
+  .project-meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-top: 1px solid var(--border);
+    padding-top: 1rem;
+    font-family: 'Space Mono', monospace;
+    font-size: 0.62rem;
+    letter-spacing: 0.12em;
+    color: var(--muted);
+  }
+  .project-link {
+    color: var(--accent);
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    transition: gap 0.2s;
+  }
+  .project-link:hover { gap: 0.8rem; }
+
+  /* ─── TIMELINE ─── */
+  .timeline { position: relative; padding-left: 2rem; }
+  .timeline::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 1px;
+    background: var(--border);
+  }
+  .timeline-item {
+    position: relative;
+    padding-bottom: 3rem;
+    padding-left: 2rem;
+  }
+  .timeline-item::before {
+    content: '';
+    position: absolute;
+    left: -5.5px;
+    top: 6px;
+    width: 10px; height: 10px;
+    border: 1px solid var(--accent);
+    background: var(--bg);
+    transform: rotate(45deg);
+  }
+  .timeline-year {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.65rem;
+    letter-spacing: 0.2em;
+    color: var(--accent);
+    margin-bottom: 0.4rem;
+  }
+  .timeline-role {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1.6rem;
+    letter-spacing: 0.05em;
+    margin-bottom: 0.2rem;
+  }
+  .timeline-company {
+    font-size: 0.9rem;
+    color: var(--muted);
+    margin-bottom: 0.8rem;
+    font-weight: 300;
+  }
+  .timeline-desc {
+    font-size: 0.95rem;
+    color: rgba(232,232,240,0.7);
+    line-height: 1.7;
+    max-width: 480px;
+  }
+
+  /* ─── CONTACT ─── */
+  .contact-section {
+    padding: 8rem 3rem;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+  }
+  .contact-section::before {
+    content: 'CONTACT';
+    position: absolute;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: clamp(8rem, 20vw, 18rem);
+    color: rgba(255,255,255,0.015);
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    letter-spacing: 0.1em;
+    white-space: nowrap;
+    pointer-events: none;
+  }
+  .contact-section h2 { margin-bottom: 1rem; }
+  .contact-sub {
+    font-size: 1.1rem;
+    color: var(--muted);
+    margin-bottom: 3rem;
+    font-weight: 300;
+  }
+  .contact-links {
+    display: flex;
+    justify-content: center;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+  }
+  .contact-link {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.7rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--muted);
+    text-decoration: none;
+    border: 1px solid var(--border);
+    padding: 0.9rem 1.8rem;
+    transition: all 0.25s;
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+  }
+  .contact-link:hover {
+    color: var(--accent);
+    border-color: var(--accent);
+    background: rgba(0,245,160,0.05);
+  }
+
+  /* ─── FOOTER ─── */
+  footer {
+    border-top: 1px solid var(--border);
+    padding: 2rem 3rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-family: 'Space Mono', monospace;
+    font-size: 0.62rem;
+    letter-spacing: 0.15em;
+    color: var(--muted);
+    text-transform: uppercase;
+  }
+
+  /* ─── ANIMATIONS ─── */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(28px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+  }
+  @keyframes spin {
+    from { transform: rotate(0deg); }
+    to   { transform: rotate(360deg); }
+  }
+  @keyframes pulse {
+    0%, 100% { transform: scale(1); box-shadow: 0 0 60px rgba(0,245,160,0.4); }
+    50% { transform: scale(1.1); box-shadow: 0 0 100px rgba(0,245,160,0.7); }
+  }
+  @keyframes float {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-12px); }
+  }
+
+  /* Scroll reveal */
+  .reveal {
+    opacity: 0;
+    transform: translateY(30px);
+    transition: opacity 0.7s, transform 0.7s;
+  }
+  .reveal.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  /* ─── RESPONSIVE ─── */
+  @media (max-width: 900px) {
+    .hero { grid-template-columns: 1fr; text-align: center; padding-top: 7rem; }
+    .hero-eyebrow { justify-content: center; }
+    .hero-desc { margin: 0 auto 2.8rem; }
+    .hero-ctas { justify-content: center; }
+    .hero-visual { display: none; }
+    .projects-grid { grid-template-columns: 1fr; }
+    .project-card.featured { grid-column: span 1; }
+    nav { padding: 1.2rem 1.5rem; }
+    .section, .projects-inner, .contact-section, footer { padding-left: 1.5rem; padding-right: 1.5rem; }
+  }
+</style>
+</head>
+<body>
+
+<div id="cursor"></div>
+<div id="cursor-ring"></div>
+
+<!-- NAV -->
+<nav>
+  <a href="#" class="nav-logo">AV//DEV</a>
+  <ul class="nav-links">
+    <li><a href="#skills">Skills</a></li>
+    <li><a href="#projects">Projects</a></li>
+    <li><a href="#experience">Experience</a></li>
+    <li><a href="#contact">Contact</a></li>
+  </ul>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-content">
+    <div class="hero-eyebrow">Available for work — 2025</div>
+    <h1>
+      ALEX<br>
+      <span class="outline">VOID</span><br>
+      <span class="accent">GAMES</span>
+    </h1>
+    <p class="hero-desc">
+      I build worlds from code. Indie game developer & technical designer with 7+ years shipping 
+      titles across PC, console, and mobile platforms.
+    </p>
+    <div class="hero-ctas">
+      <a href="#projects" class="btn btn-primary">View My Work</a>
+      <a href="#contact" class="btn btn-ghost">Get In Touch</a>
+    </div>
+  </div>
+
+  <div class="hero-visual">
+    <div class="glyph-ring ring1"></div>
+    <div class="glyph-ring ring2"></div>
+    <div class="glyph-ring ring3"></div>
+    <div class="center-glyph"></div>
+    <div class="stat-chip chip-1">
+      <strong>12</strong>
+      GAMES SHIPPED
+    </div>
+    <div class="stat-chip chip-2">
+      <strong>2M+</strong>
+      PLAYERS WORLDWIDE
+    </div>
+    <div class="stat-chip chip-3">
+      <strong>7 YRS</strong>
+      IN THE INDUSTRY
+    </div>
+  </div>
+</section>
+
+<!-- SKILLS -->
+<section class="section" id="skills">
+  <div class="section-label">Disciplines</div>
+  <h2>WHAT I <span style="color:var(--accent)">BUILD</span></h2>
+
+  <div class="skills-grid">
+    <div class="skill-item reveal">
+      <span class="skill-icon">⚙️</span>
+      <div class="skill-name">Game Engines</div>
+      <p style="font-size:0.88rem;color:var(--muted);font-weight:300;">Proficient in leading industry tools for PC and console.</p>
+      <div class="skill-tags">
+        <span class="tag">Unity</span>
+        <span class="tag">Unreal 5</span>
+        <span class="tag">Godot</span>
+      </div>
+    </div>
+    <div class="skill-item reveal">
+      <span class="skill-icon">💻</span>
+      <div class="skill-name">Programming</div>
+      <p style="font-size:0.88rem;color:var(--muted);font-weight:300;">Systems, AI, networking, and gameplay engineering.</p>
+      <div class="skill-tags">
+        <span class="tag">C++</span>
+        <span class="tag">C#</span>
+        <span class="tag">GDScript</span>
+        <span class="tag">HLSL</span>
+      </div>
+    </div>
+    <div class="skill-item reveal">
+      <span class="skill-icon">🎨</span>
+      <div class="skill-name">Tech Art</div>
+      <p style="font-size:0.88rem;color:var(--muted);font-weight:300;">Shaders, VFX pipelines, and procedural generation.</p>
+      <div class="skill-tags">
+        <span class="tag">Shaders</span>
+        <span class="tag">VFX Graph</span>
+        <span class="tag">Substance</span>
+      </div>
+    </div>
+    <div class="skill-item reveal">
+      <span class="skill-icon">🧠</span>
+      <div class="skill-name">Game Design</div>
+      <p style="font-size:0.88rem;color:var(--muted);font-weight:300;">Systems design, level design, and economy balancing.</p>
+      <div class="skill-tags">
+        <span class="tag">Systems</span>
+        <span class="tag">Level Design</span>
+        <span class="tag">UX</span>
+      </div>
+    </div>
+    <div class="skill-item reveal">
+      <span class="skill-icon">🌐</span>
+      <div class="skill-name">Multiplayer</div>
+      <p style="font-size:0.88rem;color:var(--muted);font-weight:300;">Dedicated servers, rollback netcode, and P2P.</p>
+      <div class="skill-tags">
+        <span class="tag">Netcode</span>
+        <span class="tag">Mirror</span>
+        <span class="tag">Photon</span>
+      </div>
+    </div>
+    <div class="skill-item reveal">
+      <span class="skill-icon">🚀</span>
+      <div class="skill-name">Release</div>
+      <p style="font-size:0.88rem;color:var(--muted);font-weight:300;">Steam, console cert, mobile stores, and live ops.</p>
+      <div class="skill-tags">
+        <span class="tag">Steam</span>
+        <span class="tag">iOS/Android</span>
+        <span class="tag">PS5</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- PROJECTS -->
+<section class="projects-section" id="projects">
+  <div class="projects-inner">
+    <div class="section-label">Selected Work</div>
+    <h2>SHIPPED <span style="color:var(--accent2)">TITLES</span></h2>
+
+    <div class="projects-grid">
+      <div class="project-card featured reveal">
+        <div class="project-thumb">
+          <div class="project-bg bg1">NEON<br>RIFT</div>
+        </div>
+        <div class="project-info">
+          <div class="project-genre">Action RPG · PC & Console</div>
+          <div class="project-title">Neon Rift: Zero Hour</div>
+          <p class="project-desc">
+            A cyberpunk action-RPG set in a fractured megacity. Built in Unreal Engine 5 with 
+            full dynamic lighting, procedural AI behaviors, and a 15-hour narrative campaign.
+          </p>
+          <div class="project-meta">
+            <span>UNREAL 5 · C++ · 2024</span>
+            <a href="#" class="project-link">View →</a>
+          </div>
+        </div>
+      </div>
+
+      <div class="project-card reveal">
+        <div class="project-thumb">
+          <div class="project-bg bg2">ECHO</div>
+        </div>
+        <div class="project-info">
+          <div class="project-genre">Puzzle · Mobile</div>
+          <div class="project-title">Echo Chamber</div>
+          <p class="project-desc">
+            Minimalist puzzle game exploring sound as a mechanic. 1M+ downloads on iOS/Android.
+          </p>
+          <div class="project-meta">
+            <span>UNITY · C# · 2023</span>
+            <a href="#" class="project-link">View →</a>
+          </div>
+        </div>
+      </div>
+
+      <div class="project-card reveal">
+        <div class="project-thumb">
+          <div class="project-bg bg3">SIEGE</div>
+        </div>
+        <div class="project-info">
+          <div class="project-genre">Strategy · Multiplayer</div>
+          <div class="project-title">Iron Siege</div>
+          <p class="project-desc">
+            Real-time strategy with rollback netcode. 5v5 online with custom matchmaking.
+          </p>
+          <div class="project-meta">
+            <span>GODOT · 2022</span>
+            <a href="#" class="project-link">View →</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- EXPERIENCE -->
+<section class="section" id="experience">
+  <div class="section-label">Career</div>
+  <h2>EXPERIENCE <span style="color:var(--accent3)">& PATH</span></h2>
+
+  <div class="timeline">
+    <div class="timeline-item reveal">
+      <div class="timeline-year">2022 — Present</div>
+      <div class="timeline-role">Lead Gameplay Engineer</div>
+      <div class="timeline-company">Neon Forge Studio · Berlin, DE</div>
+      <p class="timeline-desc">
+        Led a 6-person engineering team on two shipped titles. Owned gameplay systems, AI architecture, 
+        and performance optimization pipeline for console releases.
+      </p>
+    </div>
+    <div class="timeline-item reveal">
+      <div class="timeline-year">2020 — 2022</div>
+      <div class="timeline-role">Indie Developer</div>
+      <div class="timeline-company">Self-Published · Remote</div>
+      <p class="timeline-desc">
+        Designed, built, and shipped 3 solo projects. Learned the full pipeline from concept to 
+        storefront — including marketing, localization, and community management.
+      </p>
+    </div>
+    <div class="timeline-item reveal">
+      <div class="timeline-year">2018 — 2020</div>
+      <div class="timeline-role">Junior Gameplay Programmer</div>
+      <div class="timeline-company">Pixel Drift Games · Toronto, CA</div>
+      <p class="timeline-desc">
+        Shipped two mobile titles under a senior team. Focused on physics systems, UI programming, 
+        and live-ops event tooling.
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- CONTACT -->
+<section class="contact-section" id="contact">
+  <div class="section-label" style="justify-content:center">Let's Talk</div>
+  <h2>BUILD<br><span style="color:var(--accent)">TOGETHER</span></h2>
+  <p class="contact-sub">
+    Open to freelance, contract, and full-time opportunities.
+  </p>
+  <div class="contact-links">
+    <a href="mailto:alex@voidgames.dev" class="contact-link">✉ Email Me</a>
+    <a href="#" class="contact-link">⬡ LinkedIn</a>
+    <a href="#" class="contact-link">◈ GitHub</a>
+    <a href="#" class="contact-link">♦ Itch.io</a>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <span>© 2025 Alex Void</span>
+  <span>GAME DEVELOPER — BERLIN, DE</span>
+  <span>Designed & Coded from Scratch</span>
+</footer>
+
+<script>
+  // Custom cursor
+  const cursor = document.getElementById('cursor');
+  const ring = document.getElementById('cursor-ring');
+  let mx = 0, my = 0, rx = 0, ry = 0;
+
+  document.addEventListener('mousemove', e => {
+    mx = e.clientX; my = e.clientY;
+    cursor.style.left = mx + 'px';
+    cursor.style.top = my + 'px';
+  });
+
+  function animRing() {
+    rx += (mx - rx) * 0.12;
+    ry += (my - ry) * 0.12;
+    ring.style.left = rx + 'px';
+    ring.style.top = ry + 'px';
+    requestAnimationFrame(animRing);
+  }
+  animRing();
+
+  document.querySelectorAll('a, button, .skill-item').forEach(el => {
+    el.addEventListener('mouseenter', () => {
+      cursor.style.width = '20px';
+      cursor.style.height = '20px';
+      ring.style.width = '54px';
+      ring.style.height = '54px';
+      ring.style.borderColor = 'var(--accent2)';
+    });
+    el.addEventListener('mouseleave', () => {
+      cursor.style.width = '10px';
+      cursor.style.height = '10px';
+      ring.style.width = '36px';
+      ring.style.height = '36px';
+      ring.style.borderColor = 'var(--accent)';
+    });
+  });
+
+  // Scroll reveal
+  const reveals = document.querySelectorAll('.reveal');
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach((entry, i) => {
+      if (entry.isIntersecting) {
+        setTimeout(() => entry.target.classList.add('visible'), i * 80);
+      }
+    });
+  }, { threshold: 0.1 });
+  reveals.forEach(el => observer.observe(el));
+</script>
+</body>
+</html>
